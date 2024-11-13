@@ -122,6 +122,8 @@
         let jelenlegi = [];
         let kivalasztottdarab = null;
         let voltmar = false;
+        let kirakos8 = document.getElementById("kirakosjatek8");
+        let kirakos4 = document.getElementById("kirakosjatek4");
 
         function feltoltes() 
         {
@@ -129,33 +131,25 @@
             let feltoltott = akep.files[0];
             let valasztottmeret = parseInt(document.getElementById("jatekmeret").value);
 
-            if (!feltoltott) 
+            if (feltoltott) 
             {
-                alert("Nem töltöttél fel képet!");
+                let olvaso = new FileReader();
+                olvaso.onload = function(esemeny) 
+                {
+                    let img = new Image();
+                    img.onload = function() {
+                        szetbontas(img, valasztottmeret);
+                    };
+                    img.src = esemeny.target.result;
+                };
+                olvaso.readAsDataURL(feltoltott);
+                voltmar = true;
             } 
             else 
             {
-                if (voltmar != true)
-                {
-                    let olvaso = new FileReader();
-                    olvaso.onload = function(esemeny) 
-                    {
-                        let img = new Image();
-                        img.onload = function() {
-                            szetbontas(img, valasztottmeret);
-                        };
-                        img.src = esemeny.target.result;
-                    };
-                    olvaso.readAsDataURL(feltoltott);
-                    voltmar = true;
-                }
-                else if (voltmar == true)
-                {
-
-                    alert("Már választottál!");
-
-                }
+                alert("Nem töltöttél fel képet!");
             }
+
         }
 
         function szetbontas(img, valasztottmeret) 
@@ -165,10 +159,14 @@
             if (valasztottmeret === 4)
             {
                 oszlopok = 2;
+                kirakos8.textContent = "";
+                kirakos8.style.display = "none";
             } 
             else 
             {
                 oszlopok = 4;
+                kirakos4.textContent = "";
+                kirakos4.style.display = "none";
             }
 
             let sorok = 2;
@@ -219,14 +217,16 @@
             }
 
 
-            darabok.forEach(function(darab, jindex)
-            {
+            darabok.forEach(function(darab, jindex) {
                 let img = document.createElement('img');
                 img.src = darab.src;
                 img.className = 'darab';
                 img.dataset.eredeti = darab.index;
                 img.dataset.jelenlegi = jindex;
-                img.onclick = darabvizsgalat;
+                img.draggable = true;
+                img.ondragstart = huzaskezdes;
+                img.ondragover = huzasvege;
+                img.ondrop = kiejtes;
 
                 container.appendChild(img);
                 jelenlegi[jindex] = darab.index;
@@ -235,60 +235,26 @@
             container.style.display = "inline-grid";
         }
 
-        function darabvizsgalat(esemeny)
-        {
-            let kattintottdarab = esemeny.target;
-            
-            if (kivalasztottdarab === null)
-            {
-                kivalasztottdarab = kattintottdarab;
-                kattintottdarab.classList.add('kivalasztott');
-            } 
-            else 
-            {
-                if (kivalasztottdarab !== kattintottdarab)
-                {
-                    let index1 = parseInt(kivalasztottdarab.dataset.jelenlegi);
-                    let index2 = parseInt(kattintottdarab.dataset.jelenlegi);
-
-                    [jelenlegi[index1], jelenlegi[index2]] = [jelenlegi[index2], jelenlegi[index1]];
-                    
-                    let ideiglenessrc = kivalasztottdarab.src;
-                    let ideiglenesresz = kivalasztottdarab.dataset.eredeti;
-                    
-                    kivalasztottdarab.src = kattintottdarab.src;
-                    kivalasztottdarab.dataset.eredeti = kattintottdarab.dataset.eredeti;
-                    
-                    kattintottdarab.src = ideiglenessrc;
-                    kattintottdarab.dataset.eredeti = ideiglenesresz;
-
-                    nyerte();
-                }
-                
-                kivalasztottdarab.classList.remove('kivalasztott');
-                kivalasztottdarab = null;
-            }
+        function huzaskezdes(esemeny) {
+            esemeny.dataTransfer.setData("text/plain", esemeny.target.dataset.jelenlegi);
         }
 
-        function nyerte() 
-        {
+        function huzasvege(esemeny) {
+            esemeny.preventDefault();
+        }
 
-            let nyeres = true;
-            for (let index = 0; index < jelenlegi.length; index++)
-            {
-                if (jelenlegi[index] !== index)
-                {
-                    nyeres = false;
-                    break;
-                }
-            }
-            if (nyeres) 
-            {
-                
-                alert("Nyertél!");
-                location.reload();
-                
-            }
+        function kiejtes(esemeny) {
+            esemeny.preventDefault();
+            let huzottindex = esemeny.dataTransfer.getData("text/plain");
+            let celindex = esemeny.target.dataset.jelenlegi;
+
+            [jelenlegi[huzottindex], jelenlegi[celindex]] = [jelenlegi[celindex], jelenlegi[huzottindex]];
+
+            let huzott = document.querySelector(`img[data-jelenlegi='${huzottindex}']`);
+            let cel = document.querySelector(`img[data-jelenlegi='${celindex}']`);
+
+            [huzott.src, cel.src] = [cel.src, huzott.src];
+            [huzott.dataset.jelenlegi, cel.dataset.jelenlegi] = [cel.dataset.jelenlegi, huzott.dataset.jelenlegi];
 
         }
 
