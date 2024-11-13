@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Képkirakós</title>
+    <style>
+
+        body 
+        {
+            background-color: grey;
+            font-family: Arial, sans-serif;
+        }
+        
+        .container 
+        {
+            display: inline-grid;
+            gap: 5px;
+            padding: 10px;
+            background: #444;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .darab 
+        {
+            width: 150px;
+            height: 150px;
+            border: 3px solid #000;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .darab:hover 
+        {
+            transform: scale(1.05);
+        }
+
+        .darab.kivalasztott 
+        {
+            border: 3px solid #ff0;
+            box-shadow: 0 0 10px rgba(255, 255, 0, 0.5);
+        }
+
+        .gyuzenet 
+        {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #4CAF50;
+            color: white;
+            padding: 20px 40px;
+            border-radius: 8px;
+            font-size: 24px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        form 
+        {
+            background: #333;
+            padding: 20px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        label 
+        {
+            color: white;
+            margin: 10px;
+        }
+
+        button 
+        {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover 
+        {
+            background: #45a049;
+        }
+
+        select 
+        {
+            padding: 5px;
+            margin: 10px;
+        }
+
+    </style>
+</head>
+<body>
+    <center>
+        <form>
+            <label>Ide töltsd a képedet:</label>
+            <input type="file" id="akep" accept="image/*"><br>
+            <label>Itt válassz tábla méretet:</label>
+            <select id="jatekmeret">
+                <option value="4">4</option>
+                <option value="8">8</option>
+            </select>
+            <br><button type="button" onclick="feltoltes()">Feltöltés</button>
+        </form><br>
+
+        <div id="kirakosjatek4" class="container" style="display: none; grid-template-columns: repeat(2, auto);">
+        </div><br>
+
+        <div id="kirakosjatek8" class="container" style="display: none; grid-template-columns: repeat(4, auto);">
+        </div>
+
+    </center>
+
+    <script>
+
+        let eredeti = [];
+        let jelenlegi = [];
+        let kivalasztottdarab = null;
+        let voltmar = false;
+
+        function feltoltes() 
+        {
+            let akep = document.getElementById("akep");
+            let feltoltott = akep.files[0];
+            let valasztottmeret = parseInt(document.getElementById("jatekmeret").value);
+
+            if (!feltoltott) 
+            {
+                alert("Nem töltöttél fel képet!");
+            } 
+            else 
+            {
+                if (voltmar != true)
+                {
+                    let olvaso = new FileReader();
+                    olvaso.onload = function(esemeny) 
+                    {
+                        let img = new Image();
+                        img.onload = function() {
+                            szetbontas(img, valasztottmeret);
+                        };
+                        img.src = esemeny.target.result;
+                    };
+                    olvaso.readAsDataURL(feltoltott);
+                    voltmar = true;
+                }
+                else if (voltmar == true)
+                {
+
+                    alert("Már választottál!");
+
+                }
+            }
+        }
+
+        function szetbontas(img, valasztottmeret) 
+        {
+            let oszlopok = 0;
+
+            if (valasztottmeret === 4)
+            {
+                oszlopok = 2;
+            } 
+            else 
+            {
+                oszlopok = 4;
+            }
+
+            let sorok = 2;
+            eredeti = [];
+            jelenlegi = [];
+            kivalasztottdarab = null;
+
+            let vaszon = document.createElement('canvas');
+            let kontextus = vaszon.getContext('2d');
+            vaszon.width = img.width / oszlopok;
+            vaszon.height = img.height / sorok;
+
+            let container = document.getElementById(valasztottmeret === 4 ? 'kirakosjatek4' : 'kirakosjatek8');
+            container.innerHTML = '';
+
+            let darabok = [];
+            for (let sor = 0; sor < sorok; sor++) 
+            {
+                for (let oszlop = 0; oszlop < oszlopok; oszlop++) 
+                {
+                    kontextus.clearRect(0, 0, vaszon.width, vaszon.height);
+                    kontextus.drawImage(
+                        img,
+                        oszlop * vaszon.width,
+                        sor * vaszon.height,
+                        vaszon.width,
+                        vaszon.height,
+                        0,
+                        0,
+                        vaszon.width,
+                        vaszon.height
+                    );
+
+                    let index = sor * oszlopok + oszlop;
+                    darabok.push({
+                        index: index,
+                        src: vaszon.toDataURL()
+                    });
+                    eredeti[index] = index;
+                }
+            }
+
+            darabok.sort(randompozicio);
+
+            function randompozicio() 
+            {
+                return Math.random() - 0.5;
+            }
+
+
+            darabok.forEach(function(darab, jindex)
+            {
+                let img = document.createElement('img');
+                img.src = darab.src;
+                img.className = 'darab';
+                img.dataset.eredeti = darab.index;
+                img.dataset.jelenlegi = jindex;
+                img.onclick = darabvizsgalat;
+
+                container.appendChild(img);
+                jelenlegi[jindex] = darab.index;
+            });
+
+            container.style.display = "inline-grid";
+        }
+
+        function darabvizsgalat(esemeny)
+        {
+            let kattintottdarab = esemeny.target;
+            
+            if (kivalasztottdarab === null)
+            {
+                kivalasztottdarab = kattintottdarab;
+                kattintottdarab.classList.add('kivalasztott');
+            } 
+            else 
+            {
+                if (kivalasztottdarab !== kattintottdarab)
+                {
+                    let index1 = parseInt(kivalasztottdarab.dataset.jelenlegi);
+                    let index2 = parseInt(kattintottdarab.dataset.jelenlegi);
+
+                    [jelenlegi[index1], jelenlegi[index2]] = [jelenlegi[index2], jelenlegi[index1]];
+                    
+                    let ideiglenessrc = kivalasztottdarab.src;
+                    let ideiglenesresz = kivalasztottdarab.dataset.eredeti;
+                    
+                    kivalasztottdarab.src = kattintottdarab.src;
+                    kivalasztottdarab.dataset.eredeti = kattintottdarab.dataset.eredeti;
+                    
+                    kattintottdarab.src = ideiglenessrc;
+                    kattintottdarab.dataset.eredeti = ideiglenesresz;
+
+                    nyerte();
+                }
+                
+                kivalasztottdarab.classList.remove('kivalasztott');
+                kivalasztottdarab = null;
+            }
+        }
+
+        function nyerte() 
+        {
+
+            let nyeres = true;
+            for (let index = 0; index < jelenlegi.length; index++)
+            {
+                if (jelenlegi[index] !== index)
+                {
+                    nyeres = false;
+                    break;
+                }
+            }
+            if (nyeres) 
+            {
+                
+                alert("Nyertél!");
+                location.reload();
+                
+            }
+
+        }
+
+    </script>
+</body>
+</html>
